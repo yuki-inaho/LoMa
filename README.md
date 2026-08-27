@@ -49,6 +49,19 @@ We provide additional code examples in [demo.py](demo.py), which might help in u
 uv run demo.py matcher:loma-b
 ```
 
+## Gradio Demo App
+An interactive web UI is included. Launch it with:
+```bash
+uv run python app.py --host 127.0.0.1 --port 7860
+```
+or in the background with `./start_app.sh 7861`, then open `http://127.0.0.1:7860`.
+
+Features:
+- Model selection (LoMa-B/B128/L/G/R), keypoints, live match-threshold slider (no recomputation), RANSAC controls, and Fundamental/Homography estimation.
+- A **動作確認用 Example** dropdown that fills inputs with bundled image pairs and runs matching automatically (incl. one LoMa-G preset).
+- Visualizations: match lines (all/inlier/outlier), confidence histogram, threshold explorer, homography blend, stereo rectification, epipolar overlay.
+- Downloads: `matches.npz` / `matches.csv` / `summary.json`.
+
 ## Setup/Install
 In your python environment (tested on Linux python 3.12), run:
 ```bash

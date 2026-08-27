@@ -7,3 +7,6 @@ data/
 .WxBS
 results/
 demo/
+app_data/
+debug_shots/
+output.pkl
