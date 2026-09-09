@@ -25,17 +25,16 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from loma.descriptor import dedode as _dedode  # noqa: E402
 from loma.loma import (  # noqa: E402
     LoMa,
     LoMaB,
     LoMaB128,
-    LoMaL,
     LoMaG,
+    LoMaL,
     LoMaR,
     filter_matches,
 )
-from loma.descriptor import dedode as _dedode  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -217,11 +216,21 @@ def do_export(wrapper, args_tuple, path, input_names, output_names, opset,
     emits ORT-invalid graphs for these models (bad Concat axis, MaxPool dilations),
     so it is only a last resort. Tries dynamic shapes, then static, then legacy."""
     wrapper.eval()
+    # torch 2.8's exporter may reject a redundant conversion to its native
+    # opset after ONNXScript inlines helper functions. Newer torch versions no
+    # longer expose this internal API and do not need the workaround.
+    try:
+        from torch.onnx._internal.exporter import _compat, _constants
+    except ImportError:
+        _compat = _constants = None
+    conversion_api = getattr(_compat, "onnxscript_apis", None)
+    if conversion_api is not None and opset == _constants.TORCHLIB_OPSET:
+        conversion_api.convert_version = lambda model, _target: model
     attempts = []
     if dynamic_shapes is not None:
         attempts.append(("dynamo+dynamic",
-                         dict(dynamo=True, optimize=True, dynamic_shapes=dynamic_shapes)))
-    attempts.append(("dynamo-static", dict(dynamo=True, optimize=True)))
+                         dict(dynamo=True, optimize=False, dynamic_shapes=dynamic_shapes)))
+    attempts.append(("dynamo-static", dict(dynamo=True, optimize=False)))
     errs = []
     with torch.no_grad():
         for label, kw in attempts:
@@ -235,7 +244,7 @@ def do_export(wrapper, args_tuple, path, input_names, output_names, opset,
                 log(f"  wrote {path} ({os.path.getsize(path) / 1e6:.1f} MB) [{label}]")
                 return label
             except Exception as e:
-                errs.append(f"{label}: {type(e).__name__}: {str(e)[:160]}")
+                errs.append(f"{label}: {type(e).__name__}: {str(e)[:320]}")
                 log(f"  {label} failed: {errs[-1]}")
         if not allow_legacy:
             raise RuntimeError("dynamo export failed: " + " | ".join(errs))

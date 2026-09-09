@@ -16,10 +16,9 @@ dedode_g (DINOv2) requires descriptor side divisible by 14.
 import argparse
 import os
 
+import export_onnx as E
 import numpy as np
 import torch
-
-import export_onnx as E
 
 # desc resolution per arch must satisfy: dedode_g -> divisible by 14.
 # `det` is a square side (int) or a (H, W) tuple for non-square / landscape inputs.
@@ -33,6 +32,10 @@ PRESETS = {
     "quality":  dict(det=1024,        desc={"dedode_b": 784, "dedode_g": 784}, kpts=2048),
     # landscape camera-frame preset: detector at H=512, W=1024
     "wide":     dict(det=(512, 1024), desc={"dedode_b": 512, "dedode_g": 518}, kpts=2048),
+    # Lightweight 4:3 preset validated on GTX 1070 / ONNX Runtime 1.17.1.
+    "landscape_4x3_512": dict(
+        det=(384, 512), desc={"dedode_b": 384, "dedode_g": 378}, kpts=512
+    ),
 }
 
 # one model per descriptor arch is enough to source both detector + descriptor weights
@@ -54,7 +57,8 @@ def preprocess_square(path, side, device):
 
 def export_detector_preset(model, preset, outdir, opset, im):
     cfg = PRESETS[preset]
-    H, W = as_hw(cfg["det"]); n = cfg["kpts"]
+    H, W = as_hw(cfg["det"])
+    n = cfg["kpts"]
     path = os.path.join(outdir, f"loma_detector_{preset}.onnx")
     E.log(f"== detector [{preset}] {H}x{W} (HxW), {n} kpts ==")
     img = preprocess_square(im, (H, W), E.dev(model))

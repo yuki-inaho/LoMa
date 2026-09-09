@@ -127,7 +127,7 @@ python3 jetson_bench.py --presets pico nano turbo fast --iters 15   # CUDA EP
 ```bash
 # from the LoMa repo root: set up the `loma` package + ONNX deps
 uv sync
-uv pip install onnxruntime onnxscript    # CPU EP; for GPU see "ONNX Runtime on GPU"
+uv pip install onnx onnxruntime onnxscript  # CPU EP; for GPU see "ONNX Runtime on GPU"
 
 cd deployment                            # the tools live here and run from here (self-contained)
 uv run export_onnx.py   --variants B128            # detector + descriptor + matcher
@@ -135,6 +135,46 @@ uv run export_jetson.py --presets fast wide --archs dedode_b   # optimized prese
 uv run compare_onnx.py                             # ONNX-vs-PyTorch end-to-end check
 uv run bench_sweep.py                              # benchmark + charts (needs CUDA EP)
 ```
+
+### GTX 1070 / ONNX Runtime 1.17.1
+
+The `landscape_4x3_512` preset provides a lightweight 4:3 pipeline with a
+384×512 detector, 384×384 DeDoDe-B descriptor, and 512 keypoints. Export on CPU
+because current PyTorch CUDA wheels no longer compile kernels for Pascal
+(`sm_61`), then finalize the graphs for ONNX Runtime 1.17.1:
+
+```bash
+cd deployment
+LOMA_EXPORT_CPU=1 uv run export_jetson.py \
+  --presets landscape_4x3_512 --archs dedode_b \
+  --components detector descriptor --outdir onnx
+LOMA_EXPORT_CPU=1 uv run export_onnx.py \
+  --variants B128 --components matcher --num-keypoints 512 --outdir onnx
+uv run finalize_ort117.py --in-place \
+  onnx/loma_detector_landscape_4x3_512.onnx \
+  onnx/loma_descriptor_dedode_b_landscape_4x3_512.onnx \
+  onnx/loma_matcher_B128.onnx
+```
+
+Use a separate Python 3.11 runtime for Pascal inference. These versions are the
+tested x86_64 combination:
+
+```bash
+uv venv --python 3.11 .venv-ort117
+source .venv-ort117/bin/activate
+uv pip install "numpy<2" "onnxruntime-gpu==1.17.1" \
+  "nvidia-cuda-runtime-cu11==11.8.89" \
+  "nvidia-cublas-cu11==11.11.3.6" \
+  "nvidia-cudnn-cu11==8.9.6.50"
+CUDA_LIBS=$(python -c 'import pathlib, site; print(":".join(str(p) for r in site.getsitepackages() for p in pathlib.Path(r, "nvidia").glob("*/lib")))')
+LD_LIBRARY_PATH="$CUDA_LIBS:${LD_LIBRARY_PATH:-}" \
+  python benchmark_onnx_gpu.py --help
+```
+
+`finalize_ort117.py` checks the source graph, extracts only nodes and initializers
+needed by its declared inputs and outputs, checks the result again, and caps the IR
+header at version 9. The opset remains 18. On the B128 matcher this removes detector
+and descriptor weights retained by the unoptimized PyTorch 2.8 export.
 
 ## Quickstart — C++ (3 lines)
 ```cpp
