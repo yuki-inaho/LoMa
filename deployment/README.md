@@ -204,6 +204,29 @@ colmap mapper --database_path scene.db --image_path imgs --output_path sparse
 
 ---
 
+## RTX 50-series / Blackwell (sm_120) on x86_64
+
+Tested on an **RTX 5090** (driver 580, CUDA 13 capable) with the `uv sync` venv:
+
+```bash
+cd deployment
+uv pip install onnx onnxruntime-gpu onnxscript      # onnxruntime-gpu 1.23.2
+uv run python export_onnx.py --variants B128 \
+  --components detector descriptor matcher --num-keypoints 512 --outdir onnx
+uv run python bench_blackwell.py --onnx-dir onnx --iters 20 \
+  --out docs/blackwell_benchmark.json
+```
+
+* `CUDAExecutionProvider` works out of the box from the pip wheel — no manual
+  `LD_LIBRARY_PATH` is needed (the venv's `nvidia-*` wheels are resolved by ORT).
+* `bench_blackwell.py` uses the same fixed-size preprocessing as
+  `compare_onnx.py` (detector 752×1024, descriptor 784×784), so its numbers are
+  directly comparable to `benchmark_gpu.py` (PyTorch-CUDA reference).
+* Run it on an **idle GPU**: if another process (e.g. training) holds the VRAM,
+  the ORT BFC arena fails with `Failed to allocate memory for requested buffer`.
+* Export on CPU (`LOMA_EXPORT_CPU=1`) remains recommended for reproducible graphs;
+  inference on Blackwell uses the FP32 exports as-is (no INT8 kernels on sm_120).
+
 ## ONNX Runtime on GPU (aarch64 / Blackwell)
 `pip install onnxruntime-gpu` has **no aarch64 + CUDA wheel**. Options:
 
@@ -240,6 +263,7 @@ export_jetson.py     resolution/keypoint presets (fast/balanced/quality/wide)
 compare_onnx.py      end-to-end ONNX-vs-PyTorch comparison
 bench_sweep.py       GPU benchmark sweep + charts  → docs/
 benchmark_gpu.py     PyTorch-CUDA latency reference
+bench_blackwell.py   ONNX CUDA-EP benchmark on RTX 50-series / Blackwell (sm_120)
 viz_matches.py       qualitative match figure (docs/matches.png)
 jetson_bench.py      on-device ONNX benchmark for Jetson (numpy + PIL only)
 jetson_charts.py     Jetson charts + GB10-vs-Orin comparison  → docs/
