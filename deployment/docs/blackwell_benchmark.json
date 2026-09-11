@@ -1,0 +1,30 @@
+{
+  "device": "GPU",
+  "providers_requested": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "providers_used": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "onnx_dir": "/tmp/opencode/loma_onnx",
+  "pairs": [
+    "assets/0015_A.jpg",
+    "assets/0015_B.jpg"
+  ],
+  "iters": 20,
+  "detector_ms": {
+    "a": 17.14,
+    "b": 17.3
+  },
+  "descriptor_ms": {
+    "a": 18.78,
+    "b": 18.97
+  },
+  "matcher_ms": 9.59,
+  "total_ms": 81.78,
+  "fps": 12.23,
+  "num_match_pairs": 229,
+  "keypoints_per_image": 512
+}

@@ -259,12 +259,14 @@ def do_export(wrapper, args_tuple, path, input_names, output_names, opset,
     return "legacy"
 
 
-def ort_session(path):
+def ort_session(path, providers=None):
     import onnxruntime as ort
 
     so = ort.SessionOptions()
     so.log_severity_level = 3
-    return ort.InferenceSession(path, sess_options=so, providers=["CPUExecutionProvider"])
+    if providers is None:
+        providers = ["CPUExecutionProvider"]
+    return ort.InferenceSession(path, sess_options=so, providers=providers)
 
 
 def kpt_agreement(ref, got, tol=1e-3):
