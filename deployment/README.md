@@ -227,6 +227,20 @@ uv run python bench_blackwell.py --onnx-dir onnx --iters 20 \
 * Export on CPU (`LOMA_EXPORT_CPU=1`) remains recommended for reproducible graphs;
   inference on Blackwell uses the FP32 exports as-is (no INT8 kernels on sm_120).
 
+**Measured on this RTX 5090 host** (onnxruntime-gpu 1.23.2, CUDA EP, B128 /
+DeDoDe-B, 512 keypoints, detector 752×1024, descriptor 784×784, 20-iteration
+average — see `docs/blackwell_benchmark.json`):
+
+| stage | latency |
+|-------|---------|
+| detector (x2) | 17.1 + 17.3 ms |
+| descriptor (x2) | 18.8 + 19.0 ms |
+| matcher | 9.6 ms |
+| **total match()** | **81.8 ms (12.2 FPS)**, 229 match pairs |
+
+The same pipeline on CPU is ~21.8 s per pair, so the CUDA EP gives a ~266×
+speed-up here.
+
 ## ONNX Runtime on GPU (aarch64 / Blackwell)
 `pip install onnxruntime-gpu` has **no aarch64 + CUDA wheel**. Options:
 
