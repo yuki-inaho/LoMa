@@ -97,8 +97,20 @@ The models should auto download as you initialize them. However, for those who p
 - **LoMa-G** – [Download](https://github.com/davnords/storage/releases/download/loma/loma_G.pth)
 - **LoMa-R** – [Download](https://github.com/davnords/storage/releases/download/loma/loma_R.pth)
 
+## Deployment (ONNX · C++ · Jetson / DGX-Spark)
+For edge and production use, [`deployment/`](deployment/) exports every variant
+(B, B128, R, L, G) to **ONNX** — detector + descriptor + matcher, each a single
+self-contained `.onnx`, validated against PyTorch (matchers agree 100% / 99.95%,
+descriptors cosine 1.0, end-to-end 99.5% of matches within 1 px). It also ships a
+reusable **C++ inference library** (ONNX Runtime CUDA→CPU fallback, `find_package(LoMa)`,
+3-line API), resolution/keypoint **presets** tuned for the **Jetson Orin Nano 8 GB**, a
+from-source `onnxruntime-gpu` build for the **DGX Spark GB10** (sm_121, CUDA 13), and
+on-device benchmarks. The PyTorch code in `src/loma/` is untouched. See
+[`deployment/README.md`](deployment/README.md) to get started.
+
 ## Checklist
 - [x] Publish the inference code.
+- [x] ONNX export + C++ / Jetson deployment. See [`deployment/`](deployment/).
 - [x] Release rotation invariant matcher.
 - [x] Integrate with [HLoc](https://github.com/cvg/Hierarchical-Localization?tab=readme-ov-file). See this [fork](https://github.com/davnords/Hierarchical-Localization).
 - [x] Integrate with [vismatch](https://github.com/gmberton/vismatch). See this [PR](https://github.com/gmberton/vismatch/pull/63).
